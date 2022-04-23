@@ -13,7 +13,7 @@ from torch.autograd import Variable
 from mnist_train import Net
 from nt_xent import NTXentLoss
 import imageio
-wandb.login()
+import copy
 
 
 """parsing and configuration"""
@@ -473,42 +473,42 @@ class infoGAN(object):
         plt.savefig(path)
 
 
-# if __name__ == '__main__':
-"""main"""
+if __name__ == '__main__':
 
-# parse arguments
-args = parse_args()
-if args is None:
-    exit()
-print(args)
-CONFIG = vars(args)
-CONFIG["project"] = "unsw-gan-project"
+    # """main"""
+    wandb.login()
+    # parse arguments
+    args = parse_args()
+    if args is None:
+        exit()
+    print(args)
+    CONFIG = copy.deepcopy(vars(args))
+    CONFIG["project"] = "unsw-gan-project"
+    del CONFIG["benchmark_mode"]
+    run = wandb.init(project=CONFIG['project'], 
+                    config=CONFIG,
+                    job_type='Train',
+                    tags=[CONFIG['gan_type'],"benchmark_mode",CONFIG["dataset"]],
+                    anonymous='must',
+                    name = "Base Blend [Elastic InfoGAN+GAN-Tree] [try-1]",
+                    notes = "try-1")
 
-run = wandb.init(project=CONFIG['project'], 
-                  config=CONFIG,
-                  job_type='Train',
-                  tags=[CONFIG['gan_type'],CONFIG['benchmark_mode'],CONFIG["dataset"]],
-                  anonymous='must',
-                  name = "Base Blend [Elastic InfoGAN+GAN-Tree] [try-1]",
-                  notes = "try-1")
+    if args.benchmark_mode:
+        torch.backends.cudnn.benchmark = True
 
-
-if args.benchmark_mode:
-    torch.backends.cudnn.benchmark = True
-
-    # declare instance for GAN
-
-
-gan = infoGAN(args)
+        # declare instance for GAN
 
 
-    # launch the graph in a session
-gan.train()
-print(" [*] Training finished!")
+    gan = infoGAN(args)
 
-# visualize learned generator
-gan.visualize_results(args.epoch)
-print(" [*] Testing finished!")
 
-# if __name__ == '__main__':
-#     main()
+        # launch the graph in a session
+    gan.train()
+    print(" [*] Training finished!")
+
+    # visualize learned generator
+    gan.visualize_results(args.epoch)
+    print(" [*] Testing finished!")
+
+    # if __name__ == '__main__':
+    #     main()
