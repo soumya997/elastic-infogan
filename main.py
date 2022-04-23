@@ -1,6 +1,18 @@
 import argparse, os, torch
 # from infoGAN import infoGAN
 import wandb
+import utils, torch, time, os, pickle, itertools
+import numpy as np
+import torch.nn as nn
+import torch.nn.functional as F
+import torch.optim as optim
+import matplotlib.pyplot as plt
+from dataloader import dataloader
+import sys
+from torch.autograd import Variable
+from mnist_train import Net
+from nt_xent import NTXentLoss
+import imageio
 wandb.login()
 
 
@@ -64,18 +76,6 @@ def check_args(args):
     return args
 
 
-import utils, torch, time, os, pickle, itertools
-import numpy as np
-import torch.nn as nn
-import torch.nn.functional as F
-import torch.optim as optim
-import matplotlib.pyplot as plt
-from dataloader import dataloader
-import sys
-from torch.autograd import Variable
-from mnist_train import Net
-from nt_xent import NTXentLoss
-import imageio
 
 
 class HLoss(nn.Module):
@@ -298,6 +298,13 @@ class infoGAN(object):
         for epoch in range(self.epoch):
             self.G.train()
             epoch_start_time = time.time()
+
+            running_Dloss = 0.0
+            running_Gloss = 0.0
+            running_G_fake_loss = 0.0
+            running_info_loss = 0.0
+            running_kl_loss = 0.0
+
             for iter, (x_, xa_, y_) in enumerate(self.data_loader):
 
                 if iter == self.data_loader.dataset.__len__() // self.batch_size:
@@ -347,14 +354,39 @@ class infoGAN(object):
                 real_aux_c_pred = F.normalize(real_aux_c_pred,dim=1)
                 kl_loss = self.nt_xent_criterion(real_c_pred, real_aux_c_pred)
 
-                 
+                
                 G_loss = G_fake_loss + info_loss + self.klwt*kl_loss 
                 G_loss.backward(retain_graph=True)
                 self.G_optimizer.step()
+                
+                
+                
 
                 if ((iter + 1) % 100) == 0:
                     print("Epoch: [%2d] [%4d/%4d] D_loss: %.8f, G_loss: %.8f, Info_loss: %.8f, KL_loss: %.8f" %
                           ((epoch + 1), (iter + 1), self.data_loader.dataset.__len__() // self.batch_size, D_loss.item(), G_fake_loss.item(), info_loss.item(), kl_loss.item()))
+                
+                running_Dloss += D_loss.item()
+                epoch_Dloss = running_Dloss / len(self.data_loader)
+
+                running_G_fake_loss += G_fake_loss.item()
+                epoch_G_fake_loss = running_G_fake_loss / len(self.data_loader)
+
+                running_info_loss += info_loss.item()
+                epoch_info_loss = running_info_loss / len(self.data_loader)
+
+                running_kl_loss += kl_loss.item()
+                epoch_kl_loss = running_kl_loss / len(self.data_loader)
+
+                running_Gloss += G_loss.item()
+                epoch_Gloss = running_Gloss / len(self.data_loader)
+
+                # Log the metrics
+                wandb.log({"Train Loss": epoch_Dloss})
+                wandb.log({"Valid Loss": epoch_G_fake_loss})
+                wandb.log({"Valid mae": epoch_info_loss})
+                wandb.log({"Valid mse": epoch_kl_loss})
+                wandb.log({"Valid r2": epoch_Gloss})
 
             self.train_hist['per_epoch_time'].append(time.time() - epoch_start_time)
             with torch.no_grad():
