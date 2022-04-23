@@ -427,9 +427,9 @@ class infoGAN(object):
             samples = samples.data.numpy().transpose(0, 2, 3, 1)
 
         samples = (samples + 1) / 2
-
-        utils.save_images(samples[:image_frame_dim * image_frame_dim, :, :, :], [image_frame_dim, image_frame_dim],
-                          self.result_dir + '/disc_interpolation%d.png' %(self.save_ind))
+        print("samples type and shape: ", samples.type, samples.shape)
+        # utils.save_images(samples[:image_frame_dim * image_frame_dim, :, :, :], [image_frame_dim, image_frame_dim],
+        #                   self.result_dir + '/disc_interpolation%d.png' %(self.save_ind))
 
 
     def save(self):
@@ -482,9 +482,9 @@ if args is None:
     exit()
 print(args)
 CONFIG = vars(args)
+CONFIG["project"] = "unsw-gan-project"
 
-
-run = wandb.init(project=CONFIG['gan_type'], 
+run = wandb.init(project=CONFIG['project'], 
                   config=CONFIG,
                   job_type='Train',
                   tags=[CONFIG['gan_type'],CONFIG['benchmark_mode'],CONFIG["dataset"]],
